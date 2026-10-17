@@ -46,6 +46,8 @@ jobs:
           cp src/libretro/86box_libretro.info out/ 2>/dev/null || true
           file out/86box_libretro.so
           nm -D --defined-only out/86box_libretro.so | grep -c ' T retro_' || true
+          readelf -d out/86box_libretro.so | grep NEEDED
+          if readelf -d out/86box_libretro.so | grep -q 'NEEDED.*libslirp'; then echo 'libslirp must be linked statically'; exit 1; fi
 
       - uses: actions/upload-artifact@v4
         with:

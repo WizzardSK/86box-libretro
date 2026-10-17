@@ -44,7 +44,21 @@ list(APPEND net_sources
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(SLIRP REQUIRED IMPORTED_TARGET slirp)
-target_link_libraries(86Box PkgConfig::SLIRP)
+if(LIBRETRO AND UNIX AND NOT APPLE)
+    # The core is a single .so loaded into RetroArch, and libslirp is seldom
+    # installed where RetroArch runs: it goes into the core. Its glib stays
+    # shared, as nearly every Linux system has it. link.T keeps slirp's
+    # symbols out of the core's exports.
+    find_library(SLIRP_STATIC_LIBRARY NAMES libslirp.a HINTS ${SLIRP_LIBRARY_DIRS})
+    if(NOT SLIRP_STATIC_LIBRARY)
+        message(FATAL_ERROR "libslirp.a not found; the libretro core links libslirp statically")
+    endif()
+    pkg_check_modules(SLIRP_GLIB REQUIRED IMPORTED_TARGET glib-2.0)
+    target_include_directories(86Box PRIVATE ${SLIRP_INCLUDE_DIRS})
+    target_link_libraries(86Box ${SLIRP_STATIC_LIBRARY} PkgConfig::SLIRP_GLIB)
+else()
+    target_link_libraries(86Box PkgConfig::SLIRP)
+endif()
 
 if(WIN32)
     target_link_libraries(PkgConfig::SLIRP INTERFACE wsock32 ws2_32 iphlpapi)
