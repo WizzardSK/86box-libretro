@@ -16,7 +16,13 @@
 #
 
 set(WITH_SYSTEM_ZLIB ON)
-set(WITH_SYSTEM_ZSTD ON)
+if(LIBRETRO)
+    # libchdr's own zstd, built into the core: one library less for the
+    # frontend's system to have, and the buildbot images have none
+    set(WITH_SYSTEM_ZSTD OFF)
+else()
+    set(WITH_SYSTEM_ZSTD ON)
+endif()
 add_subdirectory(libchdr)
 
 find_package(PkgConfig REQUIRED)
