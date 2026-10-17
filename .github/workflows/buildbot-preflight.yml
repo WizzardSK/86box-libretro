@@ -4,6 +4,8 @@
 name: buildbot preflight
 
 on:
+  push:
+    branches: [libretro]
   workflow_dispatch:
 
 jobs:
