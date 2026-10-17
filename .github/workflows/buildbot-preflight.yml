@@ -30,7 +30,7 @@ jobs:
           docker run --rm -v "$PWD":/src -w /src ${{ matrix.image }} bash -ec '
             export DEBIAN_FRONTEND=noninteractive
             apt-get update
-            # The images, in their order: the distribution's packages first (GTK and
+            # The images, in their order: the distribution packages first (GTK and
             # libass bring freetype, libpng and zlib), then gcc-12 from the toolchain
             # PPAs and newer CMake (savoury1 on Bionic, Kitware on Jammy)
             apt-get install -y software-properties-common gpg wget build-essential git ninja-build libglib2.0-dev libass-dev libgtk-3-dev libsndfile1-dev
