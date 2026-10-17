@@ -1,5 +1,11 @@
 /* Platform layer of the libretro core: src/unix/sdl_plat.c and sdl_plat_unix.c without SDL, with the
  * user data, ROM and asset paths under the frontend's system directory (lr_data_dir). */
+#ifndef _GNU_SOURCE
+#    define _GNU_SOURCE
+#endif
+#include <inttypes.h>
+#include <stdint.h>
+#include <stdio.h>
 
 #include <stdlib.h>
 #include <string.h>
