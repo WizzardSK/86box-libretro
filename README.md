@@ -9,6 +9,19 @@
 [![Downloads](https://img.shields.io/github/downloads/86Box/86Box/total.svg)](https://github.com/86Box/86Box/releases)
 [![Translation status](https://weblate.86box.net/widget/86box/86box/language-badge.svg)](https://weblate.86box.net/engage/86box/)
 
+libretro core (this fork)
+-------------------------
+
+This fork builds 86Box as a libretro core, `86box_libretro`, for RetroArch and other libretro frontends. The frontend is in `src/libretro`, built with `-D LIBRETRO=ON`.
+
+* **Download:** [releases](https://github.com/WizzardSK/86box-libretro/releases) (Linux x86_64 and aarch64). Put `86box_libretro.so` in RetroArch's cores folder.
+* **ROMs:** the 86Box ROM set ([86Box/roms](https://github.com/86Box/roms)) goes into `system/86box/roms`.
+* **Content:** a machine's `86box.cfg`, as 86Box writes it; its disks are where that file says. A file with only `[Machine]` `machine = ibmpc82` and `[Video]` `gfxcard = cga` boots an IBM PC 5150 into Cassette BASIC.
+* **Input:** RetroArch's keyboard and mouse (port 1) go to the emulated machine; the RetroPads appear to 86Box as joysticks "RetroPad 1" to "RetroPad 4", which the machine's game port configuration in `86box.cfg` can use.
+* **Libraries:** glib, freetype, libpng, libsndfile and zlib from the system; libslirp (`src/libretro/deps/slirp`) and zstd are built into the core.
+* **Not yet:** core options, savestates, Windows, macOS and Android builds.
+* **Buildbot:** `.gitlab-ci.yml` builds Linux x64 and aarch64 on the libretro buildbot; its images still need `libsndfile1-dev`. `.github/workflows/buildbot-preflight.yml` runs the same build on GitHub.
+
 **86Box** is a low level x86 emulator that runs older operating systems and software designed for IBM PC systems and compatibles from 1981 through fairly recent system designs based on the PCI bus.
 
 Features
