@@ -30,3 +30,6 @@ target_link_libraries(86Box Threads::Threads m)
 if(NOT APPLE AND NOT WIN32)
     target_link_options(86Box PRIVATE "-Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/link.T" "-Wl,--no-undefined")
 endif()
+
+# The buildbot's CMake templates build the target <corename>_libretro
+add_custom_target(86box_libretro DEPENDS 86Box)

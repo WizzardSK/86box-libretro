@@ -1,0 +1,51 @@
+# DESCRIPTION: GitLab CI/CD for libRetro (NOT FOR GitLab-proper)
+#
+# Linux x64 and Linux aarch64. The core takes freetype, libpng and zlib from
+# the images (their GTK and libass development packages bring them),
+# libsndfile from libsndfile1-dev, and libslirp from its bundled copy in
+# src/libretro/deps/slirp. Windows, macOS and Android need a port of the
+# frontend's platform code first (src/libretro uses src/unix).
+
+##############################################################################
+################################# BOILERPLATE ################################
+##############################################################################
+
+.core-defs:
+  variables:
+    CORENAME: 86box
+    # CMake writes 86box_libretro.so to the build directory's src/
+    EXTRA_PATH: src
+    CORE_ARGS: >-
+      -DLIBRETRO=ON
+      -DRELEASE=ON
+      -DDYNAREC=ON
+    CC: gcc-12
+    CXX: g++-12
+
+include:
+  # Linux
+  - project: 'libretro-infrastructure/ci-templates'
+    file: '/linux-cmake.yml'
+
+stages:
+  - build-prepare
+  - build-shared
+
+##############################################################################
+#################################### STAGES ##################################
+##############################################################################
+
+# Linux x86_64, on backports (Bionic with newer CMake and GCC, the image whose
+# packages the list above was checked against) rather than the template's
+# Xenial one.
+libretro-build-linux-x64:
+  extends:
+    - .libretro-linux-cmake-x86_64
+    - .core-defs
+  image: $CI_SERVER_HOST:5050/libretro-infrastructure/libretro-build-amd64-ubuntu:backports
+
+# Linux aarch64
+libretro-build-linux-aarch64:
+  extends:
+    - .libretro-linux-cmake-aarch64
+    - .core-defs

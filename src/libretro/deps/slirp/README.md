@@ -1,0 +1,1 @@
+libslirp 4.7.0 (https://gitlab.freedesktop.org/slirp/libslirp, tag v4.7.0): src/ unchanged, except libslirp-version.h, which meson generates from libslirp-version.h.in. Built into the libretro core by src/network/CMakeLists.txt, as the buildbot images have no libslirp. License: COPYRIGHT (BSD-3-Clause and others, per file).

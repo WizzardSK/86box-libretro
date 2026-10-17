@@ -43,30 +43,38 @@ list(APPEND net_sources
 )
 
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(SLIRP REQUIRED IMPORTED_TARGET slirp)
-if(LIBRETRO AND UNIX AND NOT APPLE)
-    # The core is a single .so loaded into RetroArch, and libslirp is seldom
-    # installed where RetroArch runs: it goes into the core. Its glib stays
+if(LIBRETRO)
+    # The core is a single .so loaded into RetroArch: libslirp is seldom
+    # installed where RetroArch runs, and the buildbot images have none, so
+    # it is built into the core from src/libretro/deps/slirp. Its glib stays
     # shared, as nearly every Linux system has it. link.T keeps slirp's
     # symbols out of the core's exports.
-    find_library(SLIRP_STATIC_LIBRARY NAMES libslirp.a HINTS ${SLIRP_LIBRARY_DIRS})
-    if(NOT SLIRP_STATIC_LIBRARY)
-        message(FATAL_ERROR "libslirp.a not found; the libretro core links libslirp statically")
-    endif()
+    set(SLIRP_DIR ${CMAKE_SOURCE_DIR}/src/libretro/deps/slirp)
+    file(GLOB SLIRP_SOURCES ${SLIRP_DIR}/src/*.c)
+    add_library(slirp_bundled STATIC ${SLIRP_SOURCES})
+    set_target_properties(slirp_bundled PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    target_compile_definitions(slirp_bundled PRIVATE G_LOG_DOMAIN="Slirp")
+    target_include_directories(slirp_bundled PUBLIC ${SLIRP_DIR}/include)
     pkg_check_modules(SLIRP_GLIB REQUIRED IMPORTED_TARGET glib-2.0)
-    target_include_directories(86Box PRIVATE ${SLIRP_INCLUDE_DIRS})
-    target_link_libraries(86Box ${SLIRP_STATIC_LIBRARY} PkgConfig::SLIRP_GLIB)
-else()
-    target_link_libraries(86Box PkgConfig::SLIRP)
-endif()
-
-if(WIN32)
-    target_link_libraries(PkgConfig::SLIRP INTERFACE wsock32 ws2_32 iphlpapi)
-    if (NOT MSVC)
-        target_link_libraries(PkgConfig::SLIRP INTERFACE iconv)
+    target_link_libraries(slirp_bundled PUBLIC PkgConfig::SLIRP_GLIB)
+    if(WIN32)
+        target_link_libraries(slirp_bundled PUBLIC ws2_32 iphlpapi)
+    elseif(APPLE)
+        target_link_libraries(slirp_bundled PUBLIC resolv)
     endif()
-    if(STATIC_BUILD)
-        add_compile_definitions(LIBSLIRP_STATIC)
+    target_link_libraries(86Box slirp_bundled)
+else()
+    pkg_check_modules(SLIRP REQUIRED IMPORTED_TARGET slirp)
+    target_link_libraries(86Box PkgConfig::SLIRP)
+
+    if(WIN32)
+        target_link_libraries(PkgConfig::SLIRP INTERFACE wsock32 ws2_32 iphlpapi)
+        if (NOT MSVC)
+            target_link_libraries(PkgConfig::SLIRP INTERFACE iconv)
+        endif()
+        if(STATIC_BUILD)
+            add_compile_definitions(LIBSLIRP_STATIC)
+        endif()
     endif()
 endif()
 
@@ -104,3 +112,7 @@ if (UNIX AND NOT APPLE) # Support for TAP on Linux and BSD, supposedly.
 endif()
 
 add_library(net OBJECT ${net_sources})
+if(LIBRETRO)
+    # <slirp/libslirp.h> from the bundled copy
+    target_link_libraries(net PRIVATE slirp_bundled)
+endif()
