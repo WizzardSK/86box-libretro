@@ -1,0 +1,29 @@
+# Software Information
+display_name = "IBM PC compatible (86Box)"
+authors = "86Box team"
+supported_extensions = "cfg"
+corename = "86Box"
+categories = "Emulator"
+license = "GPLv2+"
+permissions = ""
+display_version = "7.0"
+
+# Hardware Information
+manufacturer = "IBM"
+systemname = "PC"
+systemid = "ibm_pc"
+
+# Libretro Features
+database = "DOS"
+supports_no_game = "false"
+savestate = "false"
+cores_options = "false"
+libretro_saves = "false"
+needs_fullpath = "true"
+disk_control = "false"
+is_experimental = "true"
+
+firmware_count = 0
+notes = "(!) The 86Box ROM set (github.com/86Box/roms) goes into system/86box/roms.|The content is a machine's 86box.cfg, as 86Box writes it; its disks are where that file says."
+
+description = "86Box is a low-level emulator of IBM PC compatibles from the 8088 to the Pentium II era: their machines, BIOSes, chipsets, video, sound and storage cards. The libretro core runs a machine from its 86box.cfg."
