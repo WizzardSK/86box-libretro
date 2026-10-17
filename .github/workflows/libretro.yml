@@ -1,0 +1,53 @@
+name: libretro core
+
+on:
+  push:
+    branches: [libretro]
+  pull_request:
+    branches: [libretro]
+  workflow_dispatch:
+
+jobs:
+  linux:
+    name: libretro core (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: linux-x86_64
+            runner: ubuntu-24.04
+          - arch: linux-aarch64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Dependencies
+        run: >-
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends
+          cmake ninja-build pkg-config
+          libfreetype-dev libpng-dev libsndfile1-dev libslirp-dev zlib1g-dev libzstd-dev
+
+      - name: Configure
+        run: >-
+          cmake -S . -B build -G Ninja
+          -D CMAKE_BUILD_TYPE=Release
+          -D LIBRETRO=ON
+          -D RELEASE=ON
+          -D DYNAREC=ON
+
+      - name: Build
+        run: cmake --build build --target 86Box
+
+      - name: Collect
+        run: |
+          mkdir -p out
+          cp "$(find build -name '86box_libretro.so' | head -1)" out/
+          cp src/libretro/86box_libretro.info out/ 2>/dev/null || true
+          file out/86box_libretro.so
+          nm -D --defined-only out/86box_libretro.so | grep -c ' T retro_' || true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: 86box_libretro-${{ matrix.arch }}
+          path: out/

@@ -24,8 +24,13 @@ if(APPLE)
     set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 endif()
 
-add_executable(86Box
-    86box.c
+if(LIBRETRO)
+    add_library(86Box SHARED 86box.c)
+    set_target_properties(86Box PROPERTIES PREFIX "" OUTPUT_NAME "86box_libretro")
+else()
+    add_executable(86Box 86box.c)
+endif()
+target_sources(86Box PRIVATE
     config.c
     timer.c
     io.c
@@ -328,9 +333,14 @@ if (APPLE)
     add_subdirectory(mac)
 endif()
 
-add_subdirectory(osd)
+if(NOT LIBRETRO)
+    add_subdirectory(osd)
+endif()
 
-if (QT)
+if(LIBRETRO)
+    add_compile_definitions(USE_LIBRETRO)
+    add_subdirectory(libretro)
+elseif (QT)
     add_subdirectory(qt)
 else()
     add_compile_definitions(USE_SDL_UI)
