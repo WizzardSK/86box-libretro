@@ -89,6 +89,16 @@ sound_get_device_supported_rates(UNUSED(const char *device_name), int *rates_out
 }
 
 /* No microphone in the core */
+void
+al_capture_open(void)
+{
+}
+
+void
+al_capture_close(void)
+{
+}
+
 int
 al_capture_get_rate(void)
 {

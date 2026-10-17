@@ -77,6 +77,10 @@ int          fixed_size_y = 480;
 int          mouse_capture;
 volatile int cpu_thread_run = 1;
 
+/* The user shader lists config.c reads and writes; the core draws no shaders */
+char gl3_shader_file[20][512];
+char vk_shader_file[20][512];
+
 static pthread_mutex_t blit_lock = PTHREAD_MUTEX_INITIALIZER;
 static char            window_title[512] = EMU_NAME;
 
@@ -138,6 +142,13 @@ lr_blit(int x, int y, int w, int h, int monitor_index)
         pthread_mutex_unlock(&frame_lock);
     }
     video_blit_complete_monitor(monitor_index);
+}
+
+/* A fatal error (pc_fatal): the machine stops; retro_run keeps showing its last frame */
+void
+do_stop(void)
+{
+    cpu_thread_run = 0;
 }
 
 void
