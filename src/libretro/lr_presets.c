@@ -686,8 +686,9 @@ first_fitting(part_kind_t kind, const char *const *names, int m)
     return "none";
 }
 
-/* A preset for any machine of the table: the first CPU family it takes at its
- * fastest, and parts by its bus and what it has built in */
+/* A preset for any machine of the table: the fastest CPU it takes (of the
+ * family that has it, the earlier one on a tie), and parts by its bus and what
+ * it has built in */
 static const preset_t *
 any_machine(const char *name, const group_t *g)
 {
@@ -695,11 +696,16 @@ any_machine(const char *name, const group_t *g)
     const int       m = machine_get_machine_from_internal_name(name);
 
     const char *family = NULL;
-    for (int f = 0; cpu_families[f].package; f++)
-        if (cpu_family_is_eligible(&cpu_families[f], m)) {
-            family = cpu_families[f].internal_name;
-            break;
-        }
+    uint32_t    fastest = 0;
+    for (int f = 0; cpu_families[f].package; f++) {
+        if (!cpu_family_is_eligible(&cpu_families[f], m))
+            continue;
+        for (int c = 0; cpu_families[f].cpus[c].cpu_type; c++)
+            if (cpu_families[f].cpus[c].rspeed > fastest && cpu_is_eligible(&cpu_families[f], c, m)) {
+                fastest = cpu_families[f].cpus[c].rspeed;
+                family  = cpu_families[f].internal_name;
+            }
+    }
 
     long       mem = g->mem_kb;
     const long min = machine_get_min_ram(m), gran = machine_get_ram_granularity(m);
