@@ -4,7 +4,11 @@
 #ifndef LR_CORE_H
 #define LR_CORE_H
 
+#include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
+
+#include "libretro.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -12,6 +16,13 @@ extern "C" {
 
 /* <system>/86box/, with a trailing slash: the user data, ROMs (roms/) and assets */
 extern const char *lr_data_dir(void);
+
+extern void lr_log(enum retro_log_level level, const char *fmt, ...);
+extern void lr_message(const char *text, unsigned frames);
+
+/* lr_presets.c: the machine presets and the core options */
+extern void lr_presets_declare(retro_environment_t cb);
+extern bool lr_presets_make_config(retro_environment_t cb, const char *content, char *cfg_path, size_t cfg_size);
 
 /* Set to 0 by plat_power_off(): the guest powered the machine off */
 extern volatile int cpu_thread_run;

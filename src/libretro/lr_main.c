@@ -84,7 +84,7 @@ char vk_shader_file[20][512];
 static pthread_mutex_t blit_lock = PTHREAD_MUTEX_INITIALIZER;
 static char            window_title[512] = EMU_NAME;
 
-static void
+void
 lr_log(enum retro_log_level level, const char *fmt, ...)
 {
     char    buf[1024];
@@ -99,7 +99,7 @@ lr_log(enum retro_log_level level, const char *fmt, ...)
         fprintf(stderr, "[86Box] %s", buf);
 }
 
-static void
+void
 lr_message(const char *text, unsigned frames)
 {
     struct retro_message msg = { text, frames };
@@ -497,6 +497,8 @@ retro_set_environment(retro_environment_t cb)
     struct retro_log_callback logging;
     if (cb(RETRO_ENVIRONMENT_GET_LOG_INTERFACE, &logging))
         log_cb = logging.log;
+
+    lr_presets_declare(cb);
 }
 
 RETRO_API void retro_set_video_refresh(retro_video_refresh_t cb) { video_cb = cb; }
@@ -565,7 +567,7 @@ RETRO_API bool
 retro_load_game(const struct retro_game_info *game)
 {
     if (!game || !game->path) {
-        lr_log(RETRO_LOG_ERROR, "a machine configuration (86box.cfg) is needed as content\n");
+        lr_log(RETRO_LOG_ERROR, "content is needed: a machine's 86box.cfg, or a disk, floppy or CD image\n");
         return false;
     }
 
@@ -578,9 +580,14 @@ retro_load_game(const struct retro_game_info *game)
 
     plat_dir_create(data_dir);
 
-    char *argv[] = { (char *) "86Box", (char *) "-C", (char *) game->path, NULL };
+    /* A 86box.cfg as it is; an image gets the machine preset's configuration */
+    static char cfg_path[1400];
+    if (!lr_presets_make_config(environ_cb, game->path, cfg_path, sizeof(cfg_path)))
+        return false;
+
+    char *argv[] = { (char *) "86Box", (char *) "-C", cfg_path, NULL };
     if (!pc_init(3, argv)) {
-        lr_log(RETRO_LOG_ERROR, "pc_init failed for %s\n", game->path);
+        lr_log(RETRO_LOG_ERROR, "pc_init failed for %s\n", cfg_path);
         return false;
     }
     if (!pc_init_roms()) {

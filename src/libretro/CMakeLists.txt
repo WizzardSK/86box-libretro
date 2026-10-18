@@ -18,6 +18,7 @@ endif()
 
 add_library(ui OBJECT
     lr_main.c
+    lr_presets.c
     ../unix/sdl_cdrom.c
 )
 

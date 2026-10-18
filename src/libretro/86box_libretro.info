@@ -1,7 +1,7 @@
 # Software Information
 display_name = "IBM PC compatible (86Box)"
 authors = "86Box team"
-supported_extensions = "cfg"
+supported_extensions = "cfg|iso|cue|chd|mds|ccd|img|ima|flp|vfd|dsk|86f|imd|td0|fdi|vhd|hdi|hdx|hdd"
 corename = "86Box"
 categories = "Emulator"
 license = "GPLv2+"
