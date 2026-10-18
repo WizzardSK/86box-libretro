@@ -446,6 +446,7 @@ plat_power_off(void)
     cycles -= 99999999;
 
     cpu_thread_run = 0;
+    lr_powered_off = 1;
 }
 
 void

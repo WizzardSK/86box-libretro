@@ -43,6 +43,9 @@ extern void        lr_disk_declare(retro_environment_t cb);
 
 /* Set to 0 by plat_power_off(): the guest powered the machine off */
 extern volatile int cpu_thread_run;
+/* Set by plat_power_off() only, not by a fatal error: retro_run then asks the
+ * frontend to close the content, as the PC switched itself off */
+extern volatile int lr_powered_off;
 
 extern char *ui_window_title(char *str);
 

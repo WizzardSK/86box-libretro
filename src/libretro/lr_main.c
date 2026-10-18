@@ -76,6 +76,7 @@ int          fixed_size_x = 640;
 int          fixed_size_y = 480;
 int          mouse_capture = 1;
 volatile int cpu_thread_run = 1;
+volatile int lr_powered_off;
 
 /* The user shader lists config.c reads and writes; the core draws no shaders */
 char gl3_shader_file[20][512];
@@ -612,6 +613,7 @@ retro_load_game(const struct retro_game_info *game)
     ms_owed         = 0.0;
     ms_since_onesec = 0;
     cpu_thread_run  = 1;
+    lr_powered_off  = 0;
     game_loaded     = true;
     lr_log(RETRO_LOG_INFO, "%s, machine started from %s\n", EMU_NAME " " EMU_VERSION_FULL, game->path);
     return true;
@@ -673,6 +675,13 @@ retro_run(void)
     static int16_t audio[2 * (SAMPLE_RATE / 50)];
 
     input_poll_cb();
+    /* The guest switched the machine off (Windows' shut down): close the
+     * content, once, rather than keep showing its last frame */
+    if (game_loaded && lr_powered_off == 1) {
+        lr_powered_off = 2;
+        lr_log(RETRO_LOG_INFO, "the machine was powered off\n");
+        environ_cb(RETRO_ENVIRONMENT_SHUTDOWN, NULL);
+    }
     if (game_loaded && cpu_thread_run) {
         poll_mouse();
 
