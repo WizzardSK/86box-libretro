@@ -74,7 +74,7 @@ int          hide_tool_bar;
 bool         fast_forward = false;
 int          fixed_size_x = 640;
 int          fixed_size_y = 480;
-int          mouse_capture;
+int          mouse_capture = 1;
 volatile int cpu_thread_run = 1;
 
 /* The user shader lists config.c reads and writes; the core draws no shaders */
@@ -166,8 +166,10 @@ plat_resize_request(UNUSED(int w), UNUSED(int h), int monitor_index)
 void
 plat_mouse_capture(int on)
 {
-    /* The frontend owns the pointer; the guest always gets its motion */
-    mouse_capture = on;
+    /* The frontend owns the pointer; the guest always gets its motion. The
+     * mice pass on nothing while this is 0, and 86Box only ever turns it off */
+    (void) on;
+    mouse_capture = 1;
 }
 
 int

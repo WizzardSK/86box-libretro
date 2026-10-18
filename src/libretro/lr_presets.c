@@ -79,13 +79,17 @@ static struct retro_core_option_v2_definition option_defs[] = {
     },
     {
         "86box_new_hdd", "New Hard Disk (Restart)", NULL,
-        "With a CD or floppy image as content, a blank hard disk of this size is made beside the machine's configuration (in saves/86box/<content>), for installing to. It is made once and kept.",
+        "With a CD or floppy image as content, a blank hard disk of this size is made beside the machine's configuration (in saves/86box/<content>), for installing to. It is made once and kept. Over 504 MB needs a BIOS with LBA (486 and later), over 8 GB a Pentium-era one and Windows 95 OSR2 or later (FAT32); on Linux and macOS the file only takes the space written to it, on Windows the whole size.",
         NULL, NULL,
         {
             { "none", "None" },
             { "504", "504 MB" },
             { "2048", "2 GB" },
             { "8064", "8 GB" },
+            { "16128", "16 GB" },
+            { "32256", "32 GB" },
+            { "65024", "64 GB" },
+            { "130048", "127 GB" },
             { NULL, NULL },
         },
         "2048"
@@ -127,7 +131,7 @@ lr_presets_declare(retro_environment_t cb)
             if (strcmp(presets[i].key, DEFAULT_PRESET) && n < sizeof(machine_desc))
                 n += (size_t) snprintf(machine_desc + n, sizeof(machine_desc) - n, "|%s", presets[i].key);
         vars[0] = (struct retro_variable) { "86box_machine", machine_desc };
-        vars[1] = (struct retro_variable) { "86box_new_hdd", "New Hard Disk (Restart); 2048|none|504|8064" };
+        vars[1] = (struct retro_variable) { "86box_new_hdd", "New Hard Disk (Restart); 2048|none|504|8064|16128|32256|65024|130048" };
         vars[2] = (struct retro_variable) { "86box_dynarec", "Dynamic Recompiler (Restart); enabled|disabled" };
         vars[3] = (struct retro_variable) { NULL, NULL };
         cb(RETRO_ENVIRONMENT_SET_VARIABLES, vars);
@@ -164,8 +168,9 @@ static void
 hdd_line(FILE *f, int n, const char *path, long long bytes, const char *channel)
 {
     long long cyl = bytes / (63LL * 16 * 512);
-    if (cyl > 16383)
-        cyl = 16383;
+    /* 86Box's limit for IDE, 127 GB (28-bit LBA) */
+    if (cyl > 266305)
+        cyl = 266305;
     fprintf(f, "hdd_%02i_parameters = 63, 16, %lld, 0, ide\n", n, cyl);
     fprintf(f, "hdd_%02i_fn = %s\n", n, path);
     fprintf(f, "hdd_%02i_ide_channel = %s\n", n, channel);
