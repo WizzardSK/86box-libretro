@@ -1519,6 +1519,10 @@ codegen_MOVZX(codeblock_t *block, uop_t *uop)
         host_x86_MOVZX_REG_32_8(block, dest_reg, src_reg);
     } else if (REG_IS_W(dest_size) && REG_IS_B(src_size)) {
         host_x86_MOVZX_REG_16_8(block, dest_reg, src_reg);
+    } else if (REG_IS_L(dest_size) && REG_IS_L(src_size)) {
+        /*32 bits zero-extended to 32: a move (without this case nothing was
+          emitted and the destination kept a stale value)*/
+        host_x86_MOV32_REG_REG(block, dest_reg, src_reg);
     }
 #    ifdef RECOMPILER_DEBUG
     else

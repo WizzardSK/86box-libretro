@@ -1277,6 +1277,9 @@ codegen_MOVZX(codeblock_t *block, uop_t *uop)
     } else if (REG_IS_W(dest_size) && REG_IS_BH(src_size)) {
         host_arm64_UBFX(block, REG_TEMP, src_reg, 8, 8);
         host_arm64_BFI(block, dest_reg, REG_TEMP, 0, 16);
+    } else if (REG_IS_L(dest_size) && REG_IS_L(src_size)) {
+        /*32 bits zero-extended to 32: a move*/
+        host_arm64_MOV_REG(block, dest_reg, src_reg, 0);
     } else
         fatal("MOVZX %02x %02x\n", uop->dest_reg_a_real, uop->src_reg_a_real);
 
