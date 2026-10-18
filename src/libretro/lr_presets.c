@@ -137,41 +137,6 @@ option(retro_environment_t cb, const char *key, const char *fallback)
     return fallback;
 }
 
-static const char *
-extension(const char *path)
-{
-    const char *dot   = strrchr(path, '.');
-    const char *slash = strrchr(path, '/');
-#ifdef _WIN32
-    const char *bslash = strrchr(path, '\\');
-    if (bslash > slash)
-        slash = bslash;
-#endif
-    return (dot && (!slash || dot > slash)) ? dot + 1 : "";
-}
-
-static bool
-ext_is(const char *ext, const char *list)
-{
-    char buf[256];
-    snprintf(buf, sizeof(buf), "%s", list);
-    for (char *tok = strtok(buf, "|"); tok; tok = strtok(NULL, "|")) {
-        size_t i = 0;
-        while (tok[i] && ext[i] && tolower((unsigned char) tok[i]) == tolower((unsigned char) ext[i]))
-            i++;
-        if (!tok[i] && !ext[i])
-            return true;
-    }
-    return false;
-}
-
-static long long
-file_size(const char *path)
-{
-    struct stat st;
-    return stat(path, &st) == 0 ? (long long) st.st_size : -1;
-}
-
 /* A raw disk of size bytes, 63 sectors and 16 heads; sparse where the
  * filesystem allows. False when it cannot be made. */
 static bool
@@ -203,8 +168,7 @@ hdd_line(FILE *f, int n, const char *path, long long bytes, const char *channel)
 bool
 lr_presets_make_config(retro_environment_t cb, const char *content, char *cfg_path, size_t cfg_size)
 {
-    const char *ext = extension(content);
-    if (ext_is(ext, "cfg")) {
+    if (lr_ext_is(lr_extension(content), "cfg")) {
         snprintf(cfg_path, cfg_size, "%s", content);
         return true;
     }
@@ -215,12 +179,12 @@ lr_presets_make_config(retro_environment_t cb, const char *content, char *cfg_pa
         if (!strcmp(presets[i].key, key))
             pr = &presets[i];
 
-    /* What the content is: a CD, a floppy or a hard disk image */
-    const long long size = file_size(content);
-    const bool is_cd     = ext_is(ext, "iso|cue|chd|mds|ccd");
-    const bool is_floppy = !is_cd && (ext_is(ext, "ima|flp|vfd|dsk|86f|imd|td0|fdi|mfm|xdf")
-                                      || (ext_is(ext, "img") && size > 0 && size <= 2949120));
-    const bool is_hdd    = !is_cd && !is_floppy;
+    /* What the content holds (an image, or an .m3u's): the floppy and CD in
+     * the drives at the start, and a hard disk */
+    lr_disk_init(content);
+    const char *floppy = lr_disk_inserted(LR_MEDIA_FLOPPY);
+    const char *cd     = lr_disk_inserted(LR_MEDIA_CD);
+    const char *hdd    = lr_disk_inserted(LR_MEDIA_HDD);
 
     /* <saves>/86box/<content name>/ */
     const char *save_dir = NULL;
@@ -263,15 +227,15 @@ lr_presets_make_config(retro_environment_t cb, const char *content, char *cfg_pa
 
     fprintf(f, "[Hard disks]\n");
     if (pr->hdc) {
-        if (is_hdd)
-            hdd_line(f, 1, content, size, "0:0");
+        if (hdd)
+            hdd_line(f, 1, hdd, lr_file_size(hdd), "0:0");
         else {
             const long long mb = atoll(option(cb, "86box_new_hdd", "2048"));
             if (mb > 0) {
                 char disk[1300];
                 snprintf(disk, sizeof(disk), "%s/hdd-%lldmb.img", dir, mb);
                 const long long bytes = (mb * 1024 * 1024) / (63LL * 16 * 512) * (63LL * 16 * 512);
-                if (file_size(disk) < 0 && !make_blank_disk(disk, bytes))
+                if (lr_file_size(disk) < 0 && !make_blank_disk(disk, bytes))
                     lr_log(RETRO_LOG_ERROR, "cannot make the hard disk %s\n", disk);
                 else
                     hdd_line(f, 1, disk, bytes, "0:0");
@@ -279,22 +243,22 @@ lr_presets_make_config(retro_environment_t cb, const char *content, char *cfg_pa
         }
     }
     fprintf(f, "\n[Floppy and CD-ROM drives]\nfdd_01_type = %s\n", pr->fdd_a);
-    if (is_floppy)
-        fprintf(f, "fdd_01_fn = %s\n", content);
+    if (floppy)
+        fprintf(f, "fdd_01_fn = %s\n", floppy);
     fprintf(f, "fdd_02_type = %s\n", pr->fdd_b ? pr->fdd_b : "none");
     if (pr->cdrom) {
         fprintf(f, "cdrom_01_parameters = 1, atapi\ncdrom_01_ide_channel = 1:0\n");
-        if (is_cd)
-            fprintf(f, "cdrom_01_image_path = %s\n", content);
+        if (cd)
+            fprintf(f, "cdrom_01_image_path = %s\n", cd);
     }
     fclose(f);
 
-    lr_log(RETRO_LOG_INFO, "machine \"%s\" for %s (%s), configuration %s\n", pr->label, content,
-           is_cd ? "CD" : is_floppy ? "floppy" : "hard disk", cfg_path);
-    if ((is_cd && !pr->cdrom) || (is_hdd && !pr->hdc)) {
+    lr_log(RETRO_LOG_INFO, "machine \"%s\" for %s (floppy %s, CD %s, hard disk %s), configuration %s\n", pr->label,
+           content, floppy ? floppy : "none", cd ? cd : "none", hdd ? hdd : "none", cfg_path);
+    if ((cd && !pr->cdrom) || (hdd && !pr->hdc)) {
         char text[300];
         snprintf(text, sizeof(text), "The %s machine has no %s drive for this content; pick another machine", pr->label,
-                 is_cd ? "CD-ROM" : "hard disk");
+                 cd && !pr->cdrom ? "CD-ROM" : "hard disk");
         lr_message(text, 600);
     }
     return true;

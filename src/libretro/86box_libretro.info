@@ -1,7 +1,7 @@
 # Software Information
 display_name = "IBM PC compatible (86Box)"
 authors = "86Box team"
-supported_extensions = "cfg|iso|cue|chd|mds|ccd|img|ima|flp|vfd|dsk|86f|imd|td0|fdi|vhd|hdi|hdx|hdd"
+supported_extensions = "cfg|m3u|iso|cue|chd|mds|ccd|img|ima|flp|vfd|dsk|86f|imd|td0|fdi|mfm|xdf|vhd|hdi|hdx|hdd"
 corename = "86Box"
 categories = "Emulator"
 license = "GPLv2+"
@@ -20,7 +20,7 @@ savestate = "false"
 cores_options = "false"
 libretro_saves = "false"
 needs_fullpath = "true"
-disk_control = "false"
+disk_control = "true"
 is_experimental = "true"
 
 firmware_count = 0

@@ -499,6 +499,7 @@ retro_set_environment(retro_environment_t cb)
         log_cb = logging.log;
 
     lr_presets_declare(cb);
+    lr_disk_declare(cb);
 }
 
 RETRO_API void retro_set_video_refresh(retro_video_refresh_t cb) { video_cb = cb; }
@@ -519,7 +520,7 @@ retro_get_system_info(struct retro_system_info *info)
     memset(info, 0, sizeof(*info));
     info->library_name     = "86Box";
     info->library_version  = EMU_VERSION_FULL;
-    info->valid_extensions = "cfg";
+    info->valid_extensions = "cfg|m3u|iso|cue|chd|mds|ccd|img|ima|flp|vfd|dsk|86f|imd|td0|fdi|mfm|xdf|vhd|hdi|hdx|hdd";
     info->need_fullpath    = true;
     info->block_extract    = true;
 }
