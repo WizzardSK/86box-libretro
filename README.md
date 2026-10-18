@@ -102,8 +102,8 @@ Donations
 
 We do not charge you for the emulator but donations are still welcome:
 <https://paypal.me/86Box>.
-You can also support the project on Patreon:
-<https://www.patreon.com/86box>.
+The libretro core can be supported on Ko-fi:
+<https://ko-fi.com/wizzardsk>.
 
 Acknowledgments
 ---------------
