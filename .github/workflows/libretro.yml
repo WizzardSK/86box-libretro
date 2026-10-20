@@ -127,6 +127,7 @@ jobs:
             -D CMAKE_TOOLCHAIN_FILE="$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" \
             -D VCPKG_MANIFEST_MODE=OFF \
             -D CMAKE_PROJECT_INCLUDE="$RUNNER_TEMP/deps.cmake" \
+            -D CMAKE_FIND_PACKAGE_TARGETS_GLOBAL=ON \
             -D VCPKG_TARGET_TRIPLET=arm64-osx \
             -D CMAKE_IGNORE_PREFIX_PATH=/opt/homebrew \
             -D CMAKE_SHARED_LINKER_FLAGS="$(pkg-config --static --libs glib-2.0 sndfile freetype2 libpng zlib) -framework CoreFoundation -framework Foundation -framework AppKit"
