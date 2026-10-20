@@ -145,7 +145,7 @@ static const group_t groups[] = {
 #define NGROUPS (sizeof(groups) / sizeof(groups[0]))
 
 static struct retro_core_option_v2_category option_cats[] = {
-    { "machines", "All Machines (Reset)", "Every machine 86Box emulates, by CPU. Set Machine to one of the \"any machine\" entries to use the list of that group; the machine needs its ROM in the ROM set." },
+    { "machines", "All Machines (Reset)", "Every machine 86Box emulates, by CPU. Picking a board here sets Machine to that group's \"any machine\", applied at Restart Content; the machine needs its ROM in the ROM set." },
     { "hardware", "Hardware (Reset)", "Change parts of the machine preset. Only for a disk, floppy or CD image as content; a 86box.cfg keeps its own hardware." },
     { NULL, NULL, NULL },
 };
@@ -402,7 +402,7 @@ static const struct retro_core_option_value nic_values[] = {
 static struct retro_core_option_v2_definition option_defs[] = {
     {
         "86box_machine", "Machine (Reset)", NULL,
-        "The PC to build when the content is a disk, floppy or CD image: a preset, or \"any machine\" of a group, picked in the All Machines submenu. A change takes effect at the next Reset (Restart Content) or start. A 86box.cfg as content keeps its own machine.",
+        "The PC to build when the content is a disk, floppy or CD image: a preset, or \"any machine\" of a group, whose board is picked in the All Machines submenu (picking a board there sets this to its group). A change takes effect at the next Reset (Restart Content) or start. A 86box.cfg as content keeps its own machine.",
         NULL, NULL,
         { { NULL, NULL } }, /* filled from presets[] and groups[] in lr_presets_declare */
         DEFAULT_PRESET
@@ -877,6 +877,30 @@ options_signature(retro_environment_t cb, char *out, size_t size)
         snprintf(opt, sizeof(opt), "86box_all_%s", groups[g].key);
         len += snprintf(out + len, size - len, "%s;", option(cb, opt, ""));
     }
+}
+
+/* All Machines: a board picked in a group's list also sets Machine to that
+ * group's "any machine", so one choice is enough. last_board holds each
+ * list's value as last seen; the first call only takes them in. */
+void
+lr_presets_follow_boards(retro_environment_t cb)
+{
+    static char last_board[NGROUPS][64];
+    static bool seen;
+    for (size_t g = 0; g < NGROUPS; g++) {
+        char opt[32];
+        snprintf(opt, sizeof(opt), "86box_all_%s", groups[g].key);
+        const char *board = option(cb, opt, "");
+        if (seen && strcmp(board, last_board[g])) {
+            static char machine[32];
+            snprintf(machine, sizeof(machine), "all_%s", groups[g].key);
+            struct retro_variable var = { "86box_machine", machine };
+            if (cb(RETRO_ENVIRONMENT_SET_VARIABLE, &var))
+                lr_log(RETRO_LOG_INFO, "All Machines: %s picked, Machine set to %s\n", board, machine);
+        }
+        snprintf(last_board[g], sizeof(last_board[g]), "%s", board);
+    }
+    seen = true;
 }
 
 bool

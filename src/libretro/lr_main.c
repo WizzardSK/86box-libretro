@@ -591,6 +591,7 @@ retro_load_game(const struct retro_game_info *game)
 
     /* A 86box.cfg as it is; an image gets the machine preset's configuration */
     snprintf(content_path, sizeof(content_path), "%s", game->path);
+    lr_presets_follow_boards(environ_cb);   /* takes in the boards' values */
     if (!lr_presets_make_config(environ_cb, game->path, lr_cfg_path, sizeof(lr_cfg_path), false))
         return false;
 
@@ -647,6 +648,7 @@ retro_reset(void)
     /* Machine or Hardware options changed: the machine is built again from a
      * new configuration, as standalone 86Box does when its settings change.
      * The floppy and CD in the drives stay. */
+    lr_presets_follow_boards(environ_cb);
     if (lr_presets_changed(environ_cb)
         && lr_presets_make_config(environ_cb, content_path, lr_cfg_path, sizeof(lr_cfg_path), true)) {
         pc_reset_hard_close();
@@ -692,6 +694,9 @@ retro_run(void)
     static int16_t audio[2 * (SAMPLE_RATE / 50)];
 
     input_poll_cb();
+    bool updated = false;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
+        lr_presets_follow_boards(environ_cb);
     /* The guest switched the machine off (Windows' shut down): close the
      * content, once, rather than keep showing its last frame */
     if (game_loaded && lr_powered_off == 1) {
