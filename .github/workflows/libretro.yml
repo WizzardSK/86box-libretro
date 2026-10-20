@@ -115,9 +115,19 @@ jobs:
       - name: Configure
         run: |
           export PKG_CONFIG_PATH="$DEPS/lib/pkgconfig"
-          # vcpkg's freetype and libpng targets link ZLIB::ZLIB without
-          # looking for it: it is looked for right after project()
-          echo 'find_package(ZLIB REQUIRED)' > "$RUNNER_TEMP/deps.cmake"
+          # vcpkg's freetype and libpng targets link ZLIB::ZLIB, which no
+          # find_package here makes: it is defined right after project()
+          cat > "$RUNNER_TEMP/deps.cmake" <<EOF
+          if(NOT TARGET ZLIB::ZLIB)
+            add_library(ZLIB::ZLIB STATIC IMPORTED GLOBAL)
+            set_target_properties(ZLIB::ZLIB PROPERTIES
+              IMPORTED_LOCATION "$DEPS/lib/libz.a"
+              INTERFACE_INCLUDE_DIRECTORIES "$DEPS/include")
+            set(ZLIB_FOUND TRUE)
+            set(ZLIB_LIBRARY "$DEPS/lib/libz.a")
+            set(ZLIB_INCLUDE_DIR "$DEPS/include")
+          endif()
+          EOF
           cmake -S . -B build -G Ninja \
             -D CMAKE_BUILD_TYPE=Release \
             -D LIBRETRO=ON \
