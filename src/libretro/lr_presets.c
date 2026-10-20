@@ -864,10 +864,10 @@ lr_presets_make_config(retro_environment_t cb, const char *content, char *cfg_pa
             grp = &groups[g];
     char opt[32];
     snprintf(opt, sizeof(opt), "86box_all_%s", grp->key);
-    const char *name = option(cb, opt, grp->board);
-    if (machine_get_machine_from_internal_name(name) < 0)
-        name = grp->board;
-    const preset_t *pr = any_machine(name, grp);
+    const char *board = option(cb, opt, grp->board);
+    if (machine_get_machine_from_internal_name(board) < 0)
+        board = grp->board;
+    const preset_t *pr = any_machine(board, grp);
 
     /* What the content holds (an image, or an .m3u's): the floppy and CD in
      * the drives at the start, and a hard disk */
