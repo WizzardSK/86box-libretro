@@ -895,8 +895,9 @@ lr_presets_follow_boards(retro_environment_t cb)
             static char machine[32];
             snprintf(machine, sizeof(machine), "all_%s", groups[g].key);
             struct retro_variable var = { "86box_machine", machine };
-            if (cb(RETRO_ENVIRONMENT_SET_VARIABLE, &var))
-                lr_log(RETRO_LOG_INFO, "All Machines: %s picked, Machine set to %s\n", board, machine);
+            const bool set = cb(RETRO_ENVIRONMENT_SET_VARIABLE, &var);
+            lr_log(set ? RETRO_LOG_INFO : RETRO_LOG_WARN, "All Machines: %s picked, Machine %s %s\n", board,
+                   set ? "set to" : "could not be set to (frontend without SET_VARIABLE)", machine);
         }
         snprintf(last_board[g], sizeof(last_board[g]), "%s", board);
     }
@@ -910,6 +911,7 @@ lr_presets_changed(retro_environment_t cb)
         return false;
     char now[sizeof(made_from)];
     options_signature(cb, now, sizeof(now));
+    lr_log(RETRO_LOG_INFO, "options at start: %s\noptions now:      %s\n", made_from, now);
     return strcmp(now, made_from) != 0;
 }
 
