@@ -1,7 +1,8 @@
 /*
- * 86Box libretro core: machine presets, the core options that pick them, and the
- * 86box.cfg a preset becomes when the content is a disk or CD image rather than
- * a configuration file of its own.
+ * 86Box libretro core: the machine (a CPU group and a board of 86Box's machine
+ * table), the core options that pick it and its parts, and the 86box.cfg they
+ * become when the content is a disk or CD image rather than a configuration
+ * file of its own.
  *
  * The generated configuration lives in <saves>/86box/<content name>/, so the
  * machine's NVRAM (CMOS settings) and a new hard disk stay with that content.
@@ -30,8 +31,10 @@
 #include "libretro.h"
 #include "lr_core.h"
 
+/* The machine a configuration is made for: a board with the parts the core
+ * picks for it (any_machine) and the Hardware options change */
 typedef struct {
-    const char *key;      /* core option value */
+    const char *key;      /* the board's internal name */
     const char *label;
     const char *machine;  /* internal names, as 86box.cfg takes them */
     const char *cpu_family;
@@ -47,78 +50,6 @@ typedef struct {
     bool        cdrom;    /* an ATAPI CD-ROM drive on the secondary channel */
 } preset_t;
 
-/* Boards 86Box emulates well with their ROMs in the v6.0 set, from each era and
- * some well-known brand-name PCs, with cards Windows of that time has drivers for */
-static const preset_t presets[] = {
-    { "ibmpc", "IBM PC 5150 (8088, CGA)",
-      "ibmpc82", "8088", 4772728, 640, "cga", 0, "none", "none", NULL, "525_2dd", NULL, false },
-    { "ibmxt", "IBM PC/XT 5160 (8088, CGA, AdLib, hard disk)",
-      "ibmxt86", "8088", 4772728, 640, "cga", 0, "adlib", "none", "xtide", "525_2dd", NULL, false },
-    { "pcjr", "IBM PCjr (8088, its own graphics and sound)",
-      "ibmpcjr", "8088", 4772728, 640, "internal", 0, "none", "none", NULL, "525_2dd", NULL, false },
-    { "compaqportable", "Compaq Portable (8088, CGA, hard disk)",
-      "portable", "8088", 4772728, 640, "compaq_cga", 0, "none", "none", "xtide", "525_2dd", "525_2dd", false },
-    { "tandy1000sx", "Tandy 1000 SX (8088, Tandy graphics and sound, hard disk)",
-      "tandy1000sx", "8088", 7159092, 640, "internal", 0, "none", "none", "xtide", "525_2dd", "525_2dd", false },
-    { "europc", "Schneider EuroPC (8088, CGA, 3.5\" floppy)",
-      "europc", "8088_europc", 9545456, 640, "cga", 0, "none", "msserial", NULL, "35_2dd", NULL, false },
-    { "pc1512", "Amstrad PC1512 (8086, CGA, mouse, hard disk)",
-      "pc1512", "8086", 8000000, 640, "internal", 0, "none", "internal", "xtide", "525_2dd", NULL, false },
-    { "ibmat", "IBM PC/AT 5170 (286, EGA, AdLib, hard disk)",
-      "ibmat", "286", 8000000, 512, "ega", 0, "adlib", "none", "ide_isa", "525_2hd", "525_2dd", false },
-    { "286", "286-16 (DOS, VGA, Sound Blaster Pro)",
-      "ami286", "286", 16000000, 2048, "et4000ax", 0, "sbprov2", "msserial", "ide_isa", "525_2hd", "35_2hd", false },
-    { "t3100e", "Toshiba T3100e (286 laptop, plasma display)",
-      "t3100e", "286", 12000000, 1024, "internal", 0, "none", "msserial", "internal", "35_2hd", NULL, false },
-    { "ps1_2121", "IBM PS/1 2121 (386SX, Windows 3.1)",
-      "ibmps1_2121", "i386sx", 16000000, 6144, "internal", 0, "internal", "ps2", "internal", "35_2hd", NULL, false },
-    { "megapc", "Amstrad MegaPC (386SX-25, VGA, Sound Blaster Pro)",
-      "megapc", "i386sx", 25000000, 4096, "internal", 0, "sbprov2", "ps2", "internal", "35_2hd", NULL, false },
-    { "386dx40", "386DX-40 (DOS games)",
-      "asus386", "am386dx", 40000000, 8192, "et4000ax", 0, "sbprov2", "msserial", "ide_isa", "35_2hd", "525_2hd", false },
-    { "486sx25", "486SX-25 VL-Bus (DOS games, Windows 3.1)",
-      "vli486sv2g", "i486sx", 25000000, 8192, "cl_gd5429_vlb", 0, "sb16", "ps2", "ide_vlb_2ch", "35_2hd", "525_2hd", true },
-    { "valuepoint", "IBM PS/ValuePoint 433DX/Si (486DX-33, Windows 3.1)",
-      "valuepoint433", "i486dx", 33333333, 16384, "internal", 0, "sb16", "ps2", "internal", "35_2hd", NULL, false },
-    { "486dx2_66", "486DX2-66 (DOS, Windows 3.1)",
-      "486sp3g", "i486dx2", 66666666, 16384, "s3_trio64_pci", 0, "sb16", "ps2", "internal", "35_2hd", "525_2hd", true },
-    { "am5x86_133", "AMD 5x86-133 (DOS, Windows 95)",
-      "486vipio2", "am5x86", 133333333, 32768, "s3_trio64_pci", 0, "sb16", "ps2", "internal", "35_2hd", "525_2hd", true },
-    { "pb520r", "Packard Bell PB520R (Pentium 60)",
-      "pb520r", "pentium_p5", 60000000, 16384, "internal", 0, "sb16", "ps2", "internal", "35_2hd", NULL, true },
-    { "ibmpc330", "IBM PC 330 (Pentium 100, Windows 95)",
-      "pc330_65x6", "pentium_p54c", 100000000, 32768, "internal", 0, "sb16", "ps2", "internal", "35_2hd", NULL, true },
-    { "pentium133", "Pentium 133 (Windows 95)",
-      "zappa", "pentium_p54c", 133333333, 32768, "s3_trio64_pci", 0, "sb16", "ps2", "internal", "35_2hd", NULL, true },
-    { "presario4500", "Compaq Presario 4500 (Pentium 166, Windows 95)",
-      "presario4500", "pentium_p54c", 166666666, 32768, "internal", 0, "internal", "ps2", "internal", "35_2hd", NULL, true },
-    { "vaio", "Sony VAIO PCV-90 (Pentium 166, Windows 95)",
-      "pcv90", "pentium_p54c", 166666666, 32768, "s3_trio64v2dx_pci", 0, "sb16", "ps2", "internal", "35_2hd", NULL, true },
-    { "gateway2000", "Gateway 2000 (Pentium 200, Windows 95)",
-      "gw2kte", "pentium_p54c", 200000000, 65536, "internal", 0, "sb16", "ps2", "internal", "35_2hd", NULL, true },
-    { "dellxps", "Dell Dimension XPS (Pentium MMX 200, Voodoo, Windows 95)",
-      "dellhannibalp", "pentium_p55c", 200000000, 65536, "virge_dx_pci", 1, "sb16", "ps2", "internal", "35_2hd", NULL, true },
-    { "pentiummmx233", "Pentium MMX 233 (Windows 95/98)",
-      "p55t2p4", "pentium_p55c", 233333333, 65536, "virge_dx_pci", 1, "sb16", "ps2", "internal", "35_2hd", NULL, true },
-    { "6x86mx", "Cyrix 6x86MX (Windows 95/98)",
-      "tx97", "cx6x86mx", 233333333, 65536, "virge_dx_pci", 0, "sb16", "ps2", "internal", "35_2hd", NULL, true },
-    { "pentiumpro200", "Pentium Pro 200 (Windows NT 4.0)",
-      "ap440fx", "pentiumpro", 200000000, 65536, "internal", 0, "internal", "ps2", "internal", "35_2hd", NULL, true },
-    { "k6_2_400", "AMD K6-2 400 (Windows 98 games)",
-      "p5a", "k6_2", 400000000, 131072, "voodoo3_3k_agp", 0, "es1371", "ps2", "internal", "35_2hd", NULL, true },
-    { "k6_3_450", "AMD K6-III 450 (Windows 98)",
-      "p5a", "k6_3", 450000000, 131072, "voodoo3_3k_agp", 0, "es1371", "ps2", "internal", "35_2hd", NULL, true },
-    { "pentium2_300", "Pentium II 300 (Windows 98)",
-      "p2bls", "pentium2_klamath", 300000000, 131072, "voodoo3_3k_agp", 0, "es1371", "ps2", "internal", "35_2hd", NULL, true },
-    { "virtualpc", "Microsoft Virtual PC 2007 hardware (Pentium II, S3 Trio64, SB16)",
-      "vpc2007", "pentium2_deschutes", 333333333, 262144, "s3_trio64_pci", 0, "sb16", "ps2", "internal", "35_2hd", NULL, true },
-    { "pentium2_450", "Pentium II 450 (Windows 98, 2000)",
-      "p3bf", "pentium2_deschutes", 450000000, 262144, "voodoo3_3k_agp", 0, "es1371", "ps2", "internal", "35_2hd", NULL, true },
-    { "celeron533", "Celeron 533 (Windows 98, 2000)",
-      "cubx", "celeron_mendocino", 533333333, 262144, "voodoo3_3k_agp", 0, "es1371", "ps2", "internal", "35_2hd", NULL, true },
-};
-#define NPRESETS (sizeof(presets) / sizeof(presets[0]))
-#define DEFAULT_PRESET "pentium2_300"
 
 /* The machine table's types, grouped into the lists of the All Machines
  * submenu: every machine 86Box emulates, the parts picked by its bus. The
@@ -128,31 +59,33 @@ typedef struct {
     const char *label;
     int         first_type, last_type; /* MACHINE_TYPE_ range */
     uint32_t    mem_kb;                /* within what the board takes */
+    const char *board;                 /* the group's board until another is picked */
 } group_t;
 
 static const group_t groups[] = {
-    { "8088", "8088 / 8086", MACHINE_TYPE_8088, MACHINE_TYPE_8086, 640 },
-    { "286", "286", MACHINE_TYPE_286, MACHINE_TYPE_286, 2048 },
-    { "386sx", "386SX", MACHINE_TYPE_386SX, MACHINE_TYPE_486SLC, 4096 },
-    { "386dx", "386DX", MACHINE_TYPE_386DX, MACHINE_TYPE_386DX_486, 8192 },
-    { "486", "486", MACHINE_TYPE_SOCKET1, MACHINE_TYPE_SOCKET3, 16384 },
-    { "486pci", "486 PCI", MACHINE_TYPE_SOCKET3_PCI, MACHINE_TYPE_STPC, 16384 },
-    { "socket45", "Pentium (Socket 4, 5)", MACHINE_TYPE_SOCKET4, MACHINE_TYPE_SOCKET5, 32768 },
-    { "socket7", "Pentium MMX, K6 (Socket 7)", MACHINE_TYPE_SOCKET7_3V, MACHINE_TYPE_SOCKET7, 65536 },
-    { "ss7", "K6-2, K6-III (Super Socket 7)", MACHINE_TYPE_SOCKETS7, MACHINE_TYPE_SOCKETS7, 131072 },
-    { "p6", "Pentium Pro, II, Celeron (Socket 8, Slot 1, Socket 370)", MACHINE_TYPE_SOCKET8, MACHINE_TYPE_MISC, 131072 },
+    { "8088", "8088 / 8086", MACHINE_TYPE_8088, MACHINE_TYPE_8086, 640, "ibmpc82" },
+    { "286", "286", MACHINE_TYPE_286, MACHINE_TYPE_286, 2048, "ami286" },
+    { "386sx", "386SX", MACHINE_TYPE_386SX, MACHINE_TYPE_486SLC, 4096, "megapc" },
+    { "386dx", "386DX", MACHINE_TYPE_386DX, MACHINE_TYPE_386DX_486, 8192, "asus386" },
+    { "486", "486", MACHINE_TYPE_SOCKET1, MACHINE_TYPE_SOCKET3, 16384, "vli486sv2g" },
+    { "486pci", "486 PCI", MACHINE_TYPE_SOCKET3_PCI, MACHINE_TYPE_STPC, 16384, "486sp3g" },
+    { "socket45", "Pentium (Socket 4, 5)", MACHINE_TYPE_SOCKET4, MACHINE_TYPE_SOCKET5, 32768, "zappa" },
+    { "socket7", "Pentium MMX, K6 (Socket 7)", MACHINE_TYPE_SOCKET7_3V, MACHINE_TYPE_SOCKET7, 65536, "p55t2p4" },
+    { "ss7", "K6-2, K6-III (Super Socket 7)", MACHINE_TYPE_SOCKETS7, MACHINE_TYPE_SOCKETS7, 131072, "p5a" },
+    { "p6", "Pentium Pro, II, Celeron (Socket 8, Slot 1, Socket 370)", MACHINE_TYPE_SOCKET8, MACHINE_TYPE_MISC, 131072, "p2bls" },
 };
 #define NGROUPS (sizeof(groups) / sizeof(groups[0]))
+#define DEFAULT_MACHINE "all_p6"
 
 static struct retro_core_option_v2_category option_cats[] = {
-    { "machines", "All Machines (Reset)", "Every machine 86Box emulates, by CPU. Picking a board here sets Machine to that group's \"any machine\", applied at Restart Content; the machine needs its ROM in the ROM set." },
-    { "hardware", "Hardware (Reset)", "Change parts of the machine preset. Only for a disk, floppy or CD image as content; a 86box.cfg keeps its own hardware." },
+    { "machines", "All Machines (Reset)", "Every machine 86Box emulates, a list per CPU group. Picking a board here sets Machine to its group, applied at Restart Content; the machine needs its ROM in the ROM set." },
+    { "hardware", "Hardware (Reset)", "Change parts the core picks for the machine (Automatic). Only for a disk, floppy or CD image as content; a 86box.cfg keeps its own hardware." },
     { NULL, NULL, NULL },
 };
 
-/* The values of the hardware options besides "preset" (and "none" where the
- * part can be left out), filled into option_defs[] in lr_presets_declare. A
- * part the machine cannot take is left as the preset has it. */
+/* The values of the hardware options besides "preset" - Automatic - (and
+ * "none" where the part can be left out), filled into option_defs[] in
+ * lr_presets_declare. A part the machine cannot take is left automatic. */
 static const struct retro_core_option_value cpu_values[] = {
     { "4772728", "4.77 MHz" }, { "8000000", "8 MHz" }, { "10000000", "10 MHz" }, { "12000000", "12 MHz" },
     { "16000000", "16 MHz" }, { "20000000", "20 MHz" }, { "25000000", "25 MHz" }, { "33333333", "33 MHz" },
@@ -402,10 +335,10 @@ static const struct retro_core_option_value nic_values[] = {
 static struct retro_core_option_v2_definition option_defs[] = {
     {
         "86box_machine", "Machine (Reset)", NULL,
-        "The PC to build when the content is a disk, floppy or CD image: a preset, or \"any machine\" of a group, whose board is picked in the All Machines submenu (picking a board there sets this to its group). A change takes effect at the next Reset (Restart Content) or start. A 86box.cfg as content keeps its own machine.",
+        "The PC to build when the content is a disk, floppy or CD image: a CPU group, with the board picked for it in the All Machines submenu (picking a board there sets this to its group). The core gives the board the fastest CPU it takes and a graphics card, sound card, hard disk controller and mouse that fit it; the Hardware options change them. A change takes effect at the next Reset (Restart Content) or start. A 86box.cfg as content keeps its own machine.",
         NULL, NULL,
-        { { NULL, NULL } }, /* filled from presets[] and groups[] in lr_presets_declare */
-        DEFAULT_PRESET
+        { { NULL, NULL } }, /* filled from groups[] in lr_presets_declare */
+        DEFAULT_MACHINE
     },
     {
         "86box_all_8088", "8088 / 8086", NULL,
@@ -496,7 +429,7 @@ static struct retro_core_option_v2_definition option_defs[] = {
     },
     {
         "86box_cpu_speed", "CPU Speed", NULL,
-        "The CPU speed within the preset's CPU family; the nearest faster one the board takes, or its fastest.",
+        "The CPU speed within the board's CPU family (Automatic: its fastest); the nearest faster one the board takes, or its fastest.",
         NULL, "hardware",
         { { NULL, NULL } }, /* filled in lr_presets_declare */
         "preset"
@@ -520,7 +453,7 @@ static struct retro_core_option_v2_definition option_defs[] = {
         "A Voodoo Graphics card beside the graphics card, for Glide and early 3D games; PCI machines only.",
         NULL, "hardware",
         {
-            { "preset", "Preset" },
+            { "preset", "Automatic" },
             { "disabled", NULL },
             { "enabled", NULL },
             { NULL, NULL },
@@ -573,13 +506,13 @@ option_def(const char *key)
     return NULL;
 }
 
-/* "preset" (and "none"), then the list, as many as fit */
+/* "preset" (Automatic, and "none"), then the list, as many as fit */
 static void
 fill_values(const char *key, bool none, const struct retro_core_option_value *list, size_t n)
 {
     struct retro_core_option_v2_definition *d = option_def(key);
     size_t i = 0;
-    d->values[i++] = (struct retro_core_option_value) { "preset", "Preset" };
+    d->values[i++] = (struct retro_core_option_value) { "preset", "Automatic" };
     if (none)
         d->values[i++] = (struct retro_core_option_value) { "none", "None" };
     for (size_t j = 0; j < n && i < RETRO_NUM_CORE_OPTION_VALUES_MAX - 1; j++)
@@ -592,16 +525,11 @@ fill_values(const char *key, bool none, const struct retro_core_option_value *li
 void
 lr_presets_declare(retro_environment_t cb)
 {
-    for (size_t i = 0; i < NPRESETS && i < RETRO_NUM_CORE_OPTION_VALUES_MAX - 1; i++) {
-        option_defs[0].values[i].value = presets[i].key;
-        option_defs[0].values[i].label = presets[i].label;
-    }
-    size_t n = NPRESETS;
-    static char group_values[NGROUPS][16], group_labels[NGROUPS][96];
+    size_t n = 0;
+    static char group_values[NGROUPS][16];
     for (size_t g = 0; g < NGROUPS && n < RETRO_NUM_CORE_OPTION_VALUES_MAX - 1; g++, n++) {
         snprintf(group_values[g], sizeof(group_values[g]), "all_%s", groups[g].key);
-        snprintf(group_labels[g], sizeof(group_labels[g]), "%s - any machine", groups[g].label);
-        option_defs[0].values[n] = (struct retro_core_option_value) { group_values[g], group_labels[g] };
+        option_defs[0].values[n] = (struct retro_core_option_value) { group_values[g], groups[g].label };
     }
     option_defs[0].values[n].value = NULL;
 
@@ -618,6 +546,9 @@ lr_presets_declare(retro_environment_t cb)
         }
         d->values[i]     = (struct retro_core_option_value) { NULL, NULL };
         d->default_value = d->values[0].value;
+        for (size_t v = 0; v < i; v++)
+            if (!strcmp(d->values[v].value, groups[g].board))
+                d->default_value = groups[g].board;
     }
     fill_values("86box_cpu_speed", false, cpu_values, ARRAY_SIZE(cpu_values));
     fill_values("86box_mem", false, mem_values, ARRAY_SIZE(mem_values));
@@ -686,7 +617,7 @@ first_fitting(part_kind_t kind, const char *const *names, int m)
     return "none";
 }
 
-/* A preset for any machine of the table: the fastest CPU it takes (of the
+/* The machine for a board of the table: the fastest CPU it takes (of the
  * family that has it, the earlier one on a tie), and parts by its bus and what
  * it has built in */
 static const preset_t *
@@ -739,8 +670,8 @@ any_machine(const char *name, const group_t *g)
     return &pr;
 }
 
-/* What the hardware options change in the preset, for machine m. A part the
- * machine cannot take stays as the preset has it, and is named in skipped. */
+/* What the hardware options change to what the core picks for machine m. A part the
+ * machine cannot take stays automatic, and is named in skipped. */
 typedef struct {
     const char *gfxcard;
     int         voodoo;
@@ -895,8 +826,9 @@ lr_presets_follow_boards(retro_environment_t cb)
             static char machine[32];
             snprintf(machine, sizeof(machine), "all_%s", groups[g].key);
             struct retro_variable var = { "86box_machine", machine };
-            if (cb(RETRO_ENVIRONMENT_SET_VARIABLE, &var))
-                lr_log(RETRO_LOG_INFO, "All Machines: %s picked, Machine set to %s\n", board, machine);
+            const bool set = cb(RETRO_ENVIRONMENT_SET_VARIABLE, &var);
+            lr_log(set ? RETRO_LOG_INFO : RETRO_LOG_WARN, "All Machines: %s picked, Machine %s %s\n", board,
+                   set ? "set to" : "could not be set to (frontend without SET_VARIABLE)", machine);
         }
         snprintf(last_board[g], sizeof(last_board[g]), "%s", board);
     }
@@ -910,6 +842,7 @@ lr_presets_changed(retro_environment_t cb)
         return false;
     char now[sizeof(made_from)];
     options_signature(cb, now, sizeof(now));
+    lr_log(RETRO_LOG_INFO, "options at start: %s\noptions now:      %s\n", made_from, now);
     return strcmp(now, made_from) != 0;
 }
 
@@ -923,19 +856,18 @@ lr_presets_make_config(retro_environment_t cb, const char *content, char *cfg_pa
     }
     options_signature(cb, made_from, sizeof(made_from));
 
-    const char *key    = option(cb, "86box_machine", DEFAULT_PRESET);
-    const preset_t *pr = &presets[0];
-    for (size_t i = 0; i < NPRESETS; i++)
-        if (!strcmp(presets[i].key, key))
-            pr = &presets[i];
+    /* The group, and its board from All Machines */
+    const char    *key = option(cb, "86box_machine", DEFAULT_MACHINE);
+    const group_t *grp = &groups[NGROUPS - 1];
     for (size_t g = 0; g < NGROUPS; g++)
-        if (!strncmp(key, "all_", 4) && !strcmp(key + 4, groups[g].key)) {
-            char opt[32];
-            snprintf(opt, sizeof(opt), "86box_all_%s", groups[g].key);
-            const char *name = option(cb, opt, NULL);
-            if (name && machine_get_machine_from_internal_name(name) >= 0)
-                pr = any_machine(name, &groups[g]);
-        }
+        if (!strncmp(key, "all_", 4) && !strcmp(key + 4, groups[g].key))
+            grp = &groups[g];
+    char opt[32];
+    snprintf(opt, sizeof(opt), "86box_all_%s", grp->key);
+    const char *board = option(cb, opt, grp->board);
+    if (machine_get_machine_from_internal_name(board) < 0)
+        board = grp->board;
+    const preset_t *pr = any_machine(board, grp);
 
     /* What the content holds (an image, or an .m3u's): the floppy and CD in
      * the drives at the start, and a hard disk */
@@ -977,7 +909,7 @@ lr_presets_make_config(retro_environment_t cb, const char *content, char *cfg_pa
     parts_t parts;
     char    skipped[100];
     pick_parts(cb, pr, machine_get_machine_from_internal_name(pr->machine), &parts, skipped, sizeof(skipped));
-    fprintf(f, "# Made by the libretro core from its \"%s\" machine preset; rewritten at each start.\n"
+    fprintf(f, "# Made by the libretro core for its \"%s\" machine; rewritten at each start.\n"
                "# For a machine of your own, load a 86box.cfg as content instead.\n\n", pr->label);
     fprintf(f, "[Machine]\nmachine = %s\ncpu_family = %s\ncpu_speed = %u\nmem_size = %u\ncpu_use_dynarec = %d\ntime_sync = local\n\n",
             pr->machine, pr->cpu_family, parts.cpu_speed, parts.mem_kb, dynarec ? 1 : 0);
@@ -1026,7 +958,7 @@ lr_presets_make_config(retro_environment_t cb, const char *content, char *cfg_pa
         lr_message(text, 600);
     } else if (skipped[0]) {
         char text[300];
-        snprintf(text, sizeof(text), "The %s machine cannot take that %s; it keeps the preset's", pr->label, skipped);
+        snprintf(text, sizeof(text), "The %s machine cannot take that %s; it keeps the automatic one", pr->label, skipped);
         lr_message(text, 600);
     }
     return true;
