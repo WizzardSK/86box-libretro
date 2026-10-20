@@ -115,6 +115,9 @@ jobs:
       - name: Configure
         run: |
           export PKG_CONFIG_PATH="$DEPS/lib/pkgconfig"
+          # vcpkg's freetype and libpng targets link ZLIB::ZLIB without
+          # looking for it: it is looked for right after project()
+          echo 'find_package(ZLIB REQUIRED)' > "$RUNNER_TEMP/deps.cmake"
           cmake -S . -B build -G Ninja \
             -D CMAKE_BUILD_TYPE=Release \
             -D LIBRETRO=ON \
@@ -123,6 +126,7 @@ jobs:
             -D CMAKE_MACOSX_BUNDLE=OFF \
             -D CMAKE_TOOLCHAIN_FILE="$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" \
             -D VCPKG_MANIFEST_MODE=OFF \
+            -D CMAKE_PROJECT_INCLUDE="$RUNNER_TEMP/deps.cmake" \
             -D VCPKG_TARGET_TRIPLET=arm64-osx \
             -D CMAKE_IGNORE_PREFIX_PATH=/opt/homebrew \
             -D CMAKE_SHARED_LINKER_FLAGS="$(pkg-config --static --libs glib-2.0 sndfile freetype2 libpng zlib) -framework CoreFoundation -framework Foundation -framework AppKit"
