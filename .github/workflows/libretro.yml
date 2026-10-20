@@ -102,17 +102,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # The libraries as static archives from vcpkg (classic mode, outside the
+      # repository's Qt manifest), so the core needs nothing from Homebrew
       - name: Dependencies
-        run: brew install ninja pkg-config freetype libpng libsndfile glib
+        run: |
+          brew install ninja pkg-config
+          cd "$RUNNER_TEMP"
+          "$VCPKG_INSTALLATION_ROOT/vcpkg" install --triplet arm64-osx \
+            "freetype[core,zlib,png]" libpng "libsndfile[core]" glib zlib
+          echo "DEPS=$VCPKG_INSTALLATION_ROOT/installed/arm64-osx" >> "$GITHUB_ENV"
 
       - name: Configure
-        run: >-
-          cmake -S . -B build -G Ninja
-          -D CMAKE_BUILD_TYPE=Release
-          -D LIBRETRO=ON
-          -D RELEASE=ON
-          -D DYNAREC=ON
-          -D CMAKE_MACOSX_BUNDLE=OFF
+        run: |
+          export PKG_CONFIG_PATH="$DEPS/lib/pkgconfig"
+          cmake -S . -B build -G Ninja \
+            -D CMAKE_BUILD_TYPE=Release \
+            -D LIBRETRO=ON \
+            -D RELEASE=ON \
+            -D DYNAREC=ON \
+            -D CMAKE_MACOSX_BUNDLE=OFF \
+            -D CMAKE_PREFIX_PATH="$DEPS" \
+            -D CMAKE_IGNORE_PREFIX_PATH=/opt/homebrew \
+            -D CMAKE_SHARED_LINKER_FLAGS="$(pkg-config --static --libs glib-2.0 sndfile freetype2 libpng zlib) -framework CoreFoundation -framework Foundation -framework AppKit"
 
       - name: Build
         run: cmake --build build --target 86Box
@@ -122,7 +133,8 @@ jobs:
           mkdir -p out
           cp "$(find build -name '86box_libretro.dylib' -o -name '86box_libretro.so' | head -1)" out/
           cp src/libretro/86box_libretro.info out/ 2>/dev/null || true
-          otool -L out/*
+          otool -L out/*.dylib
+          if otool -L out/*.dylib | grep -q /opt/homebrew; then echo 'linked against Homebrew'; exit 1; fi
 
       - uses: actions/upload-artifact@v4
         with:
