@@ -59,6 +59,11 @@ enum {
     NET_EVENT_MAX
 };
 
+#if defined(_WIN32) && !SLIRP_CHECK_VERSION(4, 9, 0)
+/* libslirp before 4.9 (the libretro core's bundled 4.7) passes sockets as int */
+typedef int slirp_os_socket;
+#endif
+
 typedef struct net_slirp_t {
     Slirp *        slirp;
     uint8_t        mac_addr[6];

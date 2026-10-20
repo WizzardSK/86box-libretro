@@ -43,9 +43,7 @@ list(APPEND net_sources
 )
 
 find_package(PkgConfig REQUIRED)
-# Windows takes MSYS2's libslirp, linked statically: net_slirp.c's Windows
-# path needs the socket API of libslirp 4.8+, newer than the bundled 4.7
-if(LIBRETRO AND NOT WIN32)
+if(LIBRETRO)
     # The core is a single .so loaded into RetroArch: libslirp is seldom
     # installed where RetroArch runs, and the buildbot images have none, so
     # it is built into the core from src/libretro/deps/slirp. Its glib stays
@@ -114,7 +112,7 @@ if (UNIX AND NOT APPLE) # Support for TAP on Linux and BSD, supposedly.
 endif()
 
 add_library(net OBJECT ${net_sources})
-if(LIBRETRO AND NOT WIN32)
+if(LIBRETRO)
     # <slirp/libslirp.h> from the bundled copy
     target_link_libraries(net PRIVATE slirp_bundled)
 endif()
