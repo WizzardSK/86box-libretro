@@ -490,6 +490,7 @@ plat_get_cpu_string(char *outbuf, uint8_t len)
  * Miscellaneous functions
  */
 
+#ifndef _WIN32 /* the C runtime has them on Windows */
 int
 stricmp(const char *s1, const char *s2)
 {
@@ -501,6 +502,7 @@ strnicmp(const char *s1, const char *s2, size_t n)
 {
     return strncasecmp(s1, s2, n);
 }
+#endif
 
 #include <stdlib.h>
 #include <string.h>
@@ -509,14 +511,18 @@ strnicmp(const char *s1, const char *s2, size_t n)
 #    include <OS.h>
 #endif
 
-#include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/time.h>
-#include <sys/mman.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <pwd.h>
-#include <spawn.h>
+#ifdef _WIN32
+#    include <windows.h>
+#else
+#    include <sys/ioctl.h>
+#    include <sys/mman.h>
+#    include <pwd.h>
+#    include <spawn.h>
+#endif
 
 /* Block device ioctl headers */
 #ifdef __linux__
@@ -591,6 +597,10 @@ void
 plat_get_temp_dir(char *outbuf, uint8_t len)
 {
     const char *tmpdir = getenv("TMPDIR");
+#ifdef _WIN32
+    if (tmpdir == NULL)
+        tmpdir = getenv("TEMP");
+#endif
     if (tmpdir == NULL) {
         tmpdir = "/tmp";
     }
@@ -626,6 +636,10 @@ plat_init_asset_paths(void)
 int
 path_abs(char *path)
 {
+#ifdef _WIN32
+    if (path[0] == '\\' || (path[0] && path[1] == ':'))
+        return 1;
+#endif
     return path[0] == '/';
 }
 
@@ -642,6 +656,10 @@ path_normalize(UNUSED(char *path))
 int
 plat_is_block_device(const char *path)
 {
+#ifdef _WIN32
+    (void) path;   /* physical drives are not offered as images here */
+    return 0;
+#else
     struct stat stats;
     if (stat(path, &stats) < 0)
         return 0;
@@ -650,6 +668,7 @@ plat_is_block_device(const char *path)
     return S_ISCHR(stats.st_mode) ? 1 : 0;
 #else
     return S_ISBLK(stats.st_mode) ? 1 : 0;
+#endif
 #endif
 }
 
@@ -718,6 +737,9 @@ plat_mmap(size_t size, uint8_t executable, uint8_t* large)
 {
     if (large)
         *large = 0;
+#ifdef _WIN32
+    return VirtualAlloc(NULL, size, MEM_RESERVE | MEM_COMMIT, executable ? PAGE_EXECUTE_READWRITE : PAGE_READWRITE);
+#else
 #    if defined __APPLE__ && defined MAP_JIT
     void *ret = mmap(0, size, PROT_READ | PROT_WRITE | (executable ? PROT_EXEC : 0), MAP_ANON | MAP_PRIVATE | (executable ? MAP_JIT : 0), -1, 0);
 #    elif defined(PROT_MPROTECT)
@@ -733,12 +755,18 @@ plat_mmap(size_t size, uint8_t executable, uint8_t* large)
 #       endif
 #    endif
     return (ret == MAP_FAILED) ? NULL : ret;
+#endif
 }
 
 void
 plat_munmap(void *ptr, size_t size)
 {
+#ifdef _WIN32
+    (void) size;
+    VirtualFree(ptr, 0, MEM_RELEASE);
+#else
     munmap(ptr, size);
+#endif
 }
 
 /*
@@ -748,6 +776,10 @@ plat_munmap(void *ptr, size_t size)
 void
 plat_set_thread_name(void *thread, const char *name)
 {
+#ifdef _WIN32
+    (void) thread;
+    (void) name;
+#else
 #ifdef __APPLE__
     if (thread) /* macOS pthread can only set self's name */
         return;
@@ -773,6 +805,7 @@ plat_set_thread_name(void *thread, const char *name)
 #else
     pthread_setname_np(thread ? *((pthread_t *) thread) : pthread_self(), truncated);
 #endif
+#endif
 }
 
 /*
@@ -782,6 +815,13 @@ plat_set_thread_name(void *thread, const char *name)
 int
 plat_run_command(const char *cmd, const char **env, const char *title)
 {
+#ifdef _WIN32
+    /* No host commands from the core on Windows */
+    (void) cmd;
+    (void) env;
+    (void) title;
+    return 0;
+#else
     /* Append environment variables to the existing environment. */
     extern char **environ;
     const char **new_env = NULL;
@@ -860,6 +900,7 @@ plat_run_command(const char *cmd, const char **env, const char *title)
     if (new_env)
         free(new_env);
     return ret;
+#endif
 }
 
 plat_device_vol_locked_t*
