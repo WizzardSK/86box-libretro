@@ -343,11 +343,7 @@ reset_common(int hard)
     cr4              = 0;
     cpu_state.eflags = 0;
     cgate32          = 0;
-#ifdef USE_DEBUG_REGS_486
-    if (is386) {
-#else
-    if (is386 && !is486) {
-#endif
+    if (is386 && (cpu_debug_regs_486 || !is486)) {
         for (uint8_t i = 0; i < 4; i++)
             dr[i] = 0x00000000;
         dr[6] = is586 ? 0xffff0ff0 : 0xffff1ff0;
@@ -363,6 +359,7 @@ reset_common(int hard)
         dr[6] = 0xffff0ff0;
         dr[7] = 0x00000400;
     }
+    cpu_dr7_update();
     if (is286) {
         if (is486)
             loadcs(0xF000);
@@ -425,8 +422,11 @@ reset_common(int hard)
 
     /* INIT keeps the model-specific registers (Pentium Vol. 1, 3.3): the
        vendor reset, which clears every MSR, is RESET's. */
-    if (!reset_init)
+    if (!reset_init) {
         cpu_ven_reset();
+        /* RESET empties the caches too. */
+        cpu_car_invalidate();
+    }
 
     in_smm = smi_latched = 0;
     /* Out of any HLT: the block end must not step past the reset vector's
