@@ -104,10 +104,6 @@ if(NOT NO_STATIC_OPTION)
     endif()
 endif()
 
-if(NOT (WIN32 OR APPLE OR CMAKE_SYSTEM_NAME STREQUAL "Linux"))
-    set(DISCORD OFF)
-endif()
-
 if(HAIKU)
     set(OPENAL ON)
 endif()
@@ -132,7 +128,6 @@ option(GDBSTUB      "Enable GDB stub server for debugging"                      
 option(AUTOMATION   "Enable the automation control socket"                       OFF)
 option(DEV_BRANCH   "Development branch"                                         OFF)
 option(DISCORD      "Discord Rich Presence support"                              ON)
-option(DEBUGREGS486 "Enable debug register opeartion on 486+ CPUs"               OFF)
 option(LIBASAN      "Enable compilation with the addresss sanitizer"             OFF)
 option(LIBRETRO     "Build the libretro core instead of an executable"           OFF)
 if(LIBRETRO)
