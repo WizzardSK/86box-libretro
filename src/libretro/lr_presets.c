@@ -145,8 +145,8 @@ static const group_t groups[] = {
 #define NGROUPS (sizeof(groups) / sizeof(groups[0]))
 
 static struct retro_core_option_v2_category option_cats[] = {
-    { "machines", "All Machines (Restart)", "Every machine 86Box emulates, by CPU. Set Machine to one of the \"any machine\" entries to use the list of that group; the machine needs its ROM in the ROM set." },
-    { "hardware", "Hardware (Restart)", "Change parts of the machine preset. Only for a disk, floppy or CD image as content; a 86box.cfg keeps its own hardware." },
+    { "machines", "All Machines (Reset)", "Every machine 86Box emulates, by CPU. Set Machine to one of the \"any machine\" entries to use the list of that group; the machine needs its ROM in the ROM set." },
+    { "hardware", "Hardware (Reset)", "Change parts of the machine preset. Only for a disk, floppy or CD image as content; a 86box.cfg keeps its own hardware." },
     { NULL, NULL, NULL },
 };
 
@@ -401,8 +401,8 @@ static const struct retro_core_option_value nic_values[] = {
 
 static struct retro_core_option_v2_definition option_defs[] = {
     {
-        "86box_machine", "Machine (Restart)", NULL,
-        "The PC to build when the content is a disk, floppy or CD image: a preset, or \"any machine\" of a group, picked in the All Machines submenu. A 86box.cfg as content keeps its own machine.",
+        "86box_machine", "Machine (Reset)", NULL,
+        "The PC to build when the content is a disk, floppy or CD image: a preset, or \"any machine\" of a group, picked in the All Machines submenu. A change takes effect at the next Reset (Restart Content) or start. A 86box.cfg as content keeps its own machine.",
         NULL, NULL,
         { { NULL, NULL } }, /* filled from presets[] and groups[] in lr_presets_declare */
         DEFAULT_PRESET
@@ -478,7 +478,7 @@ static struct retro_core_option_v2_definition option_defs[] = {
         NULL
     },
     {
-        "86box_new_hdd", "New Hard Disk (Restart)", NULL,
+        "86box_new_hdd", "New Hard Disk (Reset)", NULL,
         "With a CD or floppy image as content, a blank hard disk of this size is made beside the machine's configuration (in saves/86box/<content>), for installing to. It is made once and kept. Over 504 MB needs a BIOS with LBA (486 and later), over 8 GB a Pentium-era one and Windows 95 OSR2 or later (FAT32); on Linux and macOS the file only takes the space written to it, on Windows the whole size.",
         NULL, NULL,
         {
@@ -549,7 +549,7 @@ static struct retro_core_option_v2_definition option_defs[] = {
         "none"
     },
     {
-        "86box_dynarec", "Dynamic Recompiler (Restart)", NULL,
+        "86box_dynarec", "Dynamic Recompiler (Reset)", NULL,
         "Translates the emulated CPU's code to the host's instead of interpreting it: much faster. Off for a program that misbehaves with it.",
         NULL, NULL,
         {
@@ -858,13 +858,46 @@ hdd_line(FILE *f, int n, const char *path, long long bytes, const char *channel)
     fprintf(f, "hdd_%02i_ide_channel = %s\n", n, channel);
 }
 
-bool
-lr_presets_make_config(retro_environment_t cb, const char *content, char *cfg_path, size_t cfg_size)
+/* The options a configuration is made from, as one string: a change of any
+ * of them makes Reset build the machine again */
+static char made_from[1024];
+
+static void
+options_signature(retro_environment_t cb, char *out, size_t size)
 {
+    static const char *const keys[] = { "86box_machine", "86box_cpu_speed", "86box_mem", "86box_gfxcard",
+                                        "86box_voodoo", "86box_sndcard", "86box_mouse", "86box_nic",
+                                        "86box_new_hdd", "86box_dynarec" };
+    size_t len = 0;
+    out[0]     = '\0';
+    for (size_t i = 0; i < sizeof(keys) / sizeof(keys[0]) && len < size; i++)
+        len += snprintf(out + len, size - len, "%s;", option(cb, keys[i], ""));
+    for (size_t g = 0; g < NGROUPS && len < size; g++) {
+        char opt[32];
+        snprintf(opt, sizeof(opt), "86box_all_%s", groups[g].key);
+        len += snprintf(out + len, size - len, "%s;", option(cb, opt, ""));
+    }
+}
+
+bool
+lr_presets_changed(retro_environment_t cb)
+{
+    if (!made_from[0])   /* a 86box.cfg as content: its own machine */
+        return false;
+    char now[sizeof(made_from)];
+    options_signature(cb, now, sizeof(now));
+    return strcmp(now, made_from) != 0;
+}
+
+bool
+lr_presets_make_config(retro_environment_t cb, const char *content, char *cfg_path, size_t cfg_size, bool keep_media)
+{
+    made_from[0] = '\0';
     if (lr_ext_is(lr_extension(content), "cfg")) {
         snprintf(cfg_path, cfg_size, "%s", content);
         return true;
     }
+    options_signature(cb, made_from, sizeof(made_from));
 
     const char *key    = option(cb, "86box_machine", DEFAULT_PRESET);
     const preset_t *pr = &presets[0];
@@ -882,7 +915,8 @@ lr_presets_make_config(retro_environment_t cb, const char *content, char *cfg_pa
 
     /* What the content holds (an image, or an .m3u's): the floppy and CD in
      * the drives at the start, and a hard disk */
-    lr_disk_init(content);
+    if (!keep_media)
+        lr_disk_init(content);
     const char *floppy = lr_disk_inserted(LR_MEDIA_FLOPPY);
     const char *cd     = lr_disk_inserted(LR_MEDIA_CD);
     const char *hdd    = lr_disk_inserted(LR_MEDIA_HDD);

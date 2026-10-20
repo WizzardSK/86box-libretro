@@ -22,7 +22,11 @@ extern void lr_message(const char *text, unsigned frames);
 
 /* lr_presets.c: the machine presets and the core options */
 extern void lr_presets_declare(retro_environment_t cb);
-extern bool lr_presets_make_config(retro_environment_t cb, const char *content, char *cfg_path, size_t cfg_size);
+/* keep_media: a rebuild at Reset, with the floppy and CD that are in the drives */
+extern bool lr_presets_make_config(retro_environment_t cb, const char *content, char *cfg_path, size_t cfg_size,
+                                   bool keep_media);
+/* Whether the machine or hardware options changed since the configuration was made */
+extern bool lr_presets_changed(retro_environment_t cb);
 
 /* lr_disk.c: the content's media and Disc Control */
 typedef enum {

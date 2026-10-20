@@ -22,6 +22,7 @@
 #include <string.h>
 
 #include <86box/86box.h>
+#include <86box/config.h>
 #include <86box/device.h>
 #include <86box/gameport.h>
 #include <86box/keyboard.h>
@@ -52,6 +53,10 @@ static retro_log_printf_t         log_cb;
 
 static char data_dir[1024];
 static bool game_loaded = false;
+/* The content and the configuration it was started from (a preset's, or a
+ * 86box.cfg loaded as content), for rebuilding the machine at Reset */
+static char content_path[1400];
+static char lr_cfg_path[1400];
 
 /* The frame: what the video card blitted last, at its size */
 static uint32_t       *frame;
@@ -585,11 +590,11 @@ retro_load_game(const struct retro_game_info *game)
     plat_dir_create(data_dir);
 
     /* A 86box.cfg as it is; an image gets the machine preset's configuration */
-    static char cfg_path[1400];
-    if (!lr_presets_make_config(environ_cb, game->path, cfg_path, sizeof(cfg_path)))
+    snprintf(content_path, sizeof(content_path), "%s", game->path);
+    if (!lr_presets_make_config(environ_cb, game->path, lr_cfg_path, sizeof(lr_cfg_path), false))
         return false;
 
-    char *argv[] = { (char *) "86Box", (char *) "-C", cfg_path, NULL };
+    char *argv[] = { (char *) "86Box", (char *) "-C", lr_cfg_path, NULL };
     if (!pc_init(3, argv)) {
         lr_log(RETRO_LOG_ERROR, "pc_init failed for %s\n", cfg_path);
         return false;
@@ -637,8 +642,20 @@ retro_unload_game(void)
 RETRO_API void
 retro_reset(void)
 {
-    if (game_loaded)
-        pc_reset_hard();
+    if (!game_loaded)
+        return;
+    /* Machine or Hardware options changed: the machine is built again from a
+     * new configuration, as standalone 86Box does when its settings change.
+     * The floppy and CD in the drives stay. */
+    if (lr_presets_changed(environ_cb)
+        && lr_presets_make_config(environ_cb, content_path, lr_cfg_path, sizeof(lr_cfg_path), true)) {
+        pc_reset_hard_close();
+        config_load();
+        pc_reset_hard_init();
+        lr_log(RETRO_LOG_INFO, "machine rebuilt from %s after an option change\n", lr_cfg_path);
+        return;
+    }
+    pc_reset_hard();
 }
 
 static void
