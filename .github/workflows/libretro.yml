@@ -53,3 +53,78 @@ jobs:
         with:
           name: 86box_libretro-${{ matrix.arch }}
           path: out/
+
+  windows:
+    name: libretro core (windows-x86_64)
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja mingw-w64-x86_64-pkgconf
+            mingw-w64-x86_64-freetype mingw-w64-x86_64-libpng mingw-w64-x86_64-libsndfile
+            mingw-w64-x86_64-glib2 mingw-w64-x86_64-zlib
+
+      - name: Configure
+        run: >-
+          cmake -S . -B build -G Ninja
+          -D CMAKE_BUILD_TYPE=Release
+          -D LIBRETRO=ON
+          -D RELEASE=ON
+          -D DYNAREC=ON
+          -D STATIC_BUILD=ON
+
+      - name: Build
+        run: cmake --build build --target 86Box
+
+      - name: Collect
+        run: |
+          mkdir -p out
+          cp "$(find build -name '86box_libretro.dll' | head -1)" out/
+          cp src/libretro/86box_libretro.info out/ 2>/dev/null || true
+          objdump -p out/86box_libretro.dll | grep -E 'DLL Name|retro_run'
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: 86box_libretro-windows-x86_64
+          path: out/
+
+  macos:
+    name: libretro core (macos-arm64)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Dependencies
+        run: brew install ninja pkg-config freetype libpng libsndfile glib
+
+      - name: Configure
+        run: >-
+          cmake -S . -B build -G Ninja
+          -D CMAKE_BUILD_TYPE=Release
+          -D LIBRETRO=ON
+          -D RELEASE=ON
+          -D DYNAREC=ON
+          -D CMAKE_MACOSX_BUNDLE=OFF
+
+      - name: Build
+        run: cmake --build build --target 86Box
+
+      - name: Collect
+        run: |
+          mkdir -p out
+          cp "$(find build -name '86box_libretro.dylib' -o -name '86box_libretro.so' | head -1)" out/
+          cp src/libretro/86box_libretro.info out/ 2>/dev/null || true
+          otool -L out/*
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: 86box_libretro-macos-arm64
+          path: out/
