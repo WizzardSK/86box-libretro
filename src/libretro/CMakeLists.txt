@@ -5,15 +5,23 @@
 add_library(plat OBJECT
     lr_plat.c
     lr_sound.c
-    ../unix/unix_netsocket.c
-    ../unix/unix_dynld.c
     ../unix/dummy_cdrom_ioctl.c
     ../unix/dummy_floppy_ioctl.c
 )
 target_compile_definitions(plat PUBLIC _FILE_OFFSET_BITS=64)
-target_link_libraries(plat ${CMAKE_DL_LIBS})
-if(NOT CPPTHREADS)
-    target_sources(plat PRIVATE ../unix/unix_thread.c)
+# Sockets, libraries and threads the way the standalone does them on each host
+if(WIN32)
+    target_sources(plat PRIVATE ../qt/win_netsocket.c ../qt/win_dynld.c)
+    if(NOT CPPTHREADS)
+        target_sources(plat PRIVATE ../qt/win_thread.c)
+    endif()
+    target_link_libraries(86Box ws2_32 winmm)
+else()
+    target_sources(plat PRIVATE ../unix/unix_netsocket.c ../unix/unix_dynld.c)
+    target_link_libraries(plat ${CMAKE_DL_LIBS})
+    if(NOT CPPTHREADS)
+        target_sources(plat PRIVATE ../unix/unix_thread.c)
+    endif()
 endif()
 
 add_library(ui OBJECT
