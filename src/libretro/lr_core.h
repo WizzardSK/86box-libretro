@@ -25,6 +25,8 @@ extern void lr_presets_declare(retro_environment_t cb);
 /* keep_media: a rebuild at Reset, with the floppy and CD that are in the drives */
 extern bool lr_presets_make_config(retro_environment_t cb, const char *content, char *cfg_path, size_t cfg_size,
                                    bool keep_media);
+/* A board picked in All Machines sets Machine to its group's "any machine" */
+extern void lr_presets_follow_boards(retro_environment_t cb);
 /* Whether the machine or hardware options changed since the configuration was made */
 extern bool lr_presets_changed(retro_environment_t cb);
 
