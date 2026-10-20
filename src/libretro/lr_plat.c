@@ -903,6 +903,28 @@ plat_run_command(const char *cmd, const char **env, const char *title)
 #endif
 }
 
+#ifdef _WIN32
+/* UTF-8 <-> UTF-16, as the standalone's Windows platform does them (ini.c
+ * reads and writes the configuration through these on Windows) */
+size_t
+mbstoc16s(uint16_t dst[], const char src[], int len)
+{
+    if (src == NULL || len < 0)
+        return 0;
+    size_t ret = MultiByteToWideChar(CP_UTF8, 0, src, -1, (LPWSTR) dst, dst == NULL ? 0 : len);
+    return ret ? ret : (size_t) -1;
+}
+
+size_t
+c16stombs(char dst[], const uint16_t src[], int len)
+{
+    if (src == NULL || len < 0)
+        return 0;
+    size_t ret = WideCharToMultiByte(CP_UTF8, 0, (LPCWCH) src, -1, dst, dst == NULL ? 0 : len, NULL, NULL);
+    return ret ? ret : (size_t) -1;
+}
+#endif
+
 plat_device_vol_locked_t*
 plat_lock_volumes(FILE* file)
 {
